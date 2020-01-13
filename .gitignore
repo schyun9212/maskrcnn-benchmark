@@ -35,3 +35,7 @@ dist/
 /datasets
 /models
 /output
+
+# model
+*.pt
+*.jpg

@@ -3,10 +3,13 @@
 
 import glob
 import os
+import copy
 
 import torch
 from setuptools import find_packages
 from setuptools import setup
+import distutils.command.build
+
 from torch.utils.cpp_extension import CUDA_HOME
 from torch.utils.cpp_extension import CppExtension
 from torch.utils.cpp_extension import CUDAExtension
@@ -25,12 +28,19 @@ def get_extensions():
     sources = main_file + source_cpu
     extension = CppExtension
 
+    custom_ops_sources = [os.path.join(extensions_dir, "custom_ops", "custom_ops.cpp"),
+                          os.path.join(extensions_dir, "cpu", "nms_cpu.cpp"),
+                          os.path.join(extensions_dir, "cpu", "ROIAlign_cpu.cpp")]
+    custom_ops_sources_cuda = [os.path.join(extensions_dir, "cuda", "nms.cu"),
+                               os.path.join(extensions_dir, "cuda", "ROIAlign_cuda.cu")]
+
     extra_compile_args = {"cxx": []}
     define_macros = []
 
     if (torch.cuda.is_available() and CUDA_HOME is not None) or os.getenv("FORCE_CUDA", "0") == "1":
         extension = CUDAExtension
         sources += source_cuda
+        custom_ops_sources += custom_ops_sources_cuda
         define_macros += [("WITH_CUDA", None)]
         extra_compile_args["nvcc"] = [
             "-DCUDA_HAS_FP16=1",
@@ -50,11 +60,37 @@ def get_extensions():
             include_dirs=include_dirs,
             define_macros=define_macros,
             extra_compile_args=extra_compile_args,
-        )
+        ),
+        extension(
+            "maskrcnn_benchmark.lib.custom_ops",
+            sources=custom_ops_sources,
+            include_dirs=copy.deepcopy(include_dirs),
+            define_macros=copy.deepcopy(define_macros),
+            extra_compile_args=copy.deepcopy(extra_compile_args),
+        ),
     ]
 
     return ext_modules
 
+class rename_custom_ops_lib(distutils.command.build.build):
+    def run(self):
+        inst_dir = os.path.join(self.build_lib, 'maskrcnn_benchmark', 'lib')
+        lib_suffix = os.path.basename(torch._C.__file__).split('.', 1)[1]  # there must be a better way
+        ext = lib_suffix.rsplit('.', 1)[1]
+        os.rename(os.path.join(inst_dir, 'custom_ops.' + lib_suffix),
+                  os.path.join(inst_dir, 'libmaskrcnn_benchmark_customops.' + ext))
+
+
+class build(distutils.command.build.build):
+    sub_commands = distutils.command.build.build.sub_commands + [
+        ('rename_custom_ops_lib', lambda self: True),
+    ]
+
+CUSTOM_LIB_PATH = os.path.join(os.getcwd(), "maskrcnn_benchmark/lib")
+if not os.path.exists(CUSTOM_LIB_PATH):
+    os.makedirs(CUSTOM_LIB_PATH)
+
+print(f"CUSTOM_LIB_PATH : {CUSTOM_LIB_PATH}")
 
 setup(
     name="maskrcnn_benchmark",
@@ -65,5 +101,12 @@ setup(
     packages=find_packages(exclude=("configs", "tests",)),
     # install_requires=requirements,
     ext_modules=get_extensions(),
-    cmdclass={"build_ext": torch.utils.cpp_extension.BuildExtension},
+    cmdclass={"build_ext": torch.utils.cpp_extension.BuildExtension,
+              "rename_custom_ops_lib": rename_custom_ops_lib,
+              "build": build},
 )
+
+if not os.path.exists("maskrcnn_benchmark/lib/libmaskrcnn_benchmark_customops.so"):
+    os.system("ln -s\
+        ../../build/lib.linux-x86_64-3.7/maskrcnn_benchmark/lib/libmaskrcnn_benchmark_customops.so\
+        maskrcnn_benchmark/lib/libmaskrcnn_benchmark_customops.so")
