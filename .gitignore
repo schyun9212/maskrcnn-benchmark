@@ -37,5 +37,10 @@ dist/
 /output
 
 # model
+models/
 *.pt
+*.onnx
+
 *.jpg
+collect_env.py
+*.sh
