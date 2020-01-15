@@ -14,14 +14,14 @@ roi_align_forward = torch.ops.maskrcnn_benchmark.roi_align_forward
 
 class _ROIAlign(Function):
     @staticmethod
-    def forward(ctx, input, roi, output_size, spatial_scale, sampling_ratio):
-        ctx.save_for_backward(roi)
+    def forward(ctx, input, rois, output_size, spatial_scale, sampling_ratio):
+        ctx.save_for_backward(rois)
         ctx.output_size = _pair(output_size)
         ctx.spatial_scale = spatial_scale
         ctx.sampling_ratio = sampling_ratio
         ctx.input_shape = input.size()
         output = roi_align_forward(
-            input, rois, self.spatial_scale, self.output_size[0], self.output_size[1], self.sampling_ratio
+            input, rois, spatial_scale, output_size[0], output_size[1], sampling_ratio
         )
         return output
 
