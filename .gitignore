@@ -44,3 +44,4 @@ models/
 *.jpg
 collect_env.py
 *.sh
+*.log
