@@ -33,7 +33,9 @@ def _register_custom_op():
         return g.op("RoiAlign", grad, rois, batch_indices, spatial_scale_f=spatial_scale, output_height_i=pooled_height, output_width_i=pooled_width, sampling_ratio_i=sampling_ratio)
 
     from torch.onnx import register_custom_op_symbolic
-    register_custom_op_symbolic('maskrcnn_benchmark::nms', symbolic_nms, ONNX_OPSET_VERSION)
-    register_custom_op_symbolic('maskrcnn_benchmark::roi_align_forward', symbolic_roi_align_forward, ONNX_OPSET_VERSION)
+
+    for v in range(8, 12):
+        register_custom_op_symbolic('maskrcnn_benchmark::nms', symbolic_nms, v)
+        register_custom_op_symbolic('maskrcnn_benchmark::roi_align_forward', symbolic_roi_align_forward, v)
 
 _register_custom_op()
