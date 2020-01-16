@@ -19,7 +19,7 @@ import onnxruntime as ort
 from demo.onnx.utils import infer_shapes
 
 #%%
-ONNX_OPSET_VERSION = 10
+ONNX_OPSET_VERSION = 11
 
 config_file = "../configs/caffe2/e2e_mask_rcnn_R_50_FPN_1x_caffe2.yaml"
 try:
@@ -60,7 +60,7 @@ class Backbone(torch.nn.Module):
         super(Backbone, self).__init__()
 
     def forward(self, image):
-        image_list = ImageList(image.unsqueeze(0), [(int(image.size(-2)), int(image.size(-1)))])
+        image_list = ImageList(image.unsqueeze(0), [(image.size(-2), image.size(-1))])
 
         result = coco_demo.model.backbone(image_list.tensors)
         return result
@@ -80,7 +80,9 @@ ort_session = ort.InferenceSession(BACKBONE_PATH)
 backbone_result = ort_session.run(None, {ort_session.get_inputs()[0].name: image.numpy()})
 features = (torch.from_numpy(np.asarray(backbone_result[0])),)
 
+
 # %%
+'''
 RPN_PATH = "rpn.onnx"
 
 class RPN(torch.nn.Module):
@@ -118,7 +120,8 @@ BACKBONE_RPN_PATH = "backbone+rpn.onnx"
 class BackboneRPN(torch.nn.Module):
     def __init__(self):
         super(BackboneRPN, self).__init__()
-
+ade/.pyenv/versions/maskrcnn-tracing-latest/lib/python3.7/site-packages/torch/onnx/symbolic_helper.py:198: UserWarning: You are trying to export the model with onnx:Resize for ONNX opset version 10. This operator might cause results to not match the expected results by PyTorch.
+ONNX's Upsample/Resize ope
     def forward(self, image):
         image_list = ImageList(image.unsqueeze(0), [(int(image.size(-2)), int(image.size(-1)))])
 
@@ -176,3 +179,5 @@ torch.onnx.export(roi, (expected_backbone_result, expected_backbone_rpn_result),
 infer_shapes(ROI_PATH, "roi.shape.onnx")
 # ort_session = ort.InferenceSession(BACKBONE_RPN_PATH)
 # backbone_rpn_result = ort_session.run(None, {ort_session.get_inputs()[0].name: image.numpy()})
+
+'''
