@@ -3,7 +3,7 @@ from torchvision.transforms import functional as F
 
 import torch
 
-from predictor import Resize
+from demo.predictor import Resize
 
 def build_transform(cfg):
     """

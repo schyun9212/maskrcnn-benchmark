@@ -1,6 +1,6 @@
 import torch
 
-from predictor import COCODemo
+from demo.predictor import COCODemo
 from maskrcnn_benchmark.structures.image_list import ImageList
 
 class MaskRCNNModel(torch.nn.Module):
