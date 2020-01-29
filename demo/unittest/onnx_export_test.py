@@ -12,6 +12,8 @@ from demo.transform import transform_image
 from demo.onnx.utils import infer_shapes
 
 import unittest
+
+# This unittest is not working on 1.1.1 version of onnxruntime
 import onnxruntime
 
 config_file = "./configs/caffe2/e2e_mask_rcnn_R_50_FPN_1x_caffe2.yaml"
@@ -29,9 +31,11 @@ for param in coco_demo.model.parameters():
     param.requires_grad = False
 
 original_image = load_image("./demo/sample.jpg")
-sample_image, _, _ = transform_image(cfg, original_image)
+sample_image, t_width, t_height = transform_image(cfg, original_image)
 
 ONNX_OPSET_VERSION = 10
+
+VALIDATION_TYPE = "FILE" # FILE, IO
 
 class ONNXExportTester(unittest.TestCase):
     def run_model(self, model, inputs):
@@ -44,13 +48,10 @@ class ONNXExportTester(unittest.TestCase):
             
         return (inputs, outputs)
 
-    def export_model(self, model, inputs):
+    def export_model(self, model, inputs, onnx_io="test.onnx"):
         model.eval()
 
         inputs, outputs = self.run_model(model, inputs)
-
-        onnx_io = io.BytesIO()
-        # onnx_io = "test.onnx"
 
         # export to onnx
         torch.onnx.export(model, inputs, onnx_io, do_constant_folding=True, opset_version=ONNX_OPSET_VERSION)
@@ -91,8 +92,13 @@ class ONNXExportTester(unittest.TestCase):
 
                 result = coco_demo.model.backbone(image_list.tensors)
                 return result
-        
-        self.export_model(Backbone(), sample_image)
+
+        if VALIDATION_TYPE == "IO":
+            onnx_io = io.BytesIO()
+        else:
+            onnx_io = "./demo/onnx_tests/backbone.onnx"
+
+        self.export_model(Backbone(), sample_image, onnx_io=onnx_io)
 
     def test_rpn(self):
         class RPN(torch.nn.Module):
@@ -114,7 +120,11 @@ class ONNXExportTester(unittest.TestCase):
         
         inputs, outputs = self.run_model(rpn, (sample_image, sample_features))
 
-        onnx_io = io.BytesIO()
+        if VALIDATION_TYPE == "IO":
+            onnx_io = io.BytesIO()
+        else:
+            onnx_io = "./demo/onnx_tests/rpn.onnx"
+
         torch.onnx.export(rpn, inputs, onnx_io,
                             verbose=False,
                             do_constant_folding=False,
@@ -130,5 +140,47 @@ class ONNXExportTester(unittest.TestCase):
         # self.export_model(RPN(), (sample_image, sample_features))
         '''
 
+    def test_roi(self):
+        class ROI(torch.nn.Module):
+            def __init__(self):
+                super(ROI, self).__init__()
+
+            def forward(self, features, proposals):
+                bbox, objectness = proposals
+
+                proposals = BoxList(bbox, (t_width, t_height), mode="xyxy")
+                proposals.add_field("objectenss", objectness)
+
+                _, result, _ = coco_demo.model.roi_heads(features, [proposals])
+
+                result = (result[0].bbox,
+                        result[0].get_field("labels"),
+                        result[0].get_field("mask"),
+                        result[0].get_field("scores"))
+
+                return result
+
+        image_list = ImageList(sample_image.unsqueeze(0), [(sample_image.size(-2), sample_image.size(-1))])
+        sample_features = coco_demo.model.backbone(image_list.tensors)
+        sample_proposals = coco_demo.model.rpn(image_list, sample_features)[0][0]
+        sample_proposals = (sample_proposals.bbox,) + tuple(f for f in (sample_proposals.get_field(field) for field in sorted(sample_proposals.fields())) if isinstance(f, torch.Tensor))
+
+        roi = ROI()
+        roi.eval()
+        
+        inputs, outputs = self.run_model(roi, (sample_features, sample_proposals))
+
+        if VALIDATION_TYPE == "IO":
+            onnx_io = io.BytesIO()
+        else:
+            onnx_io = "./demo/onnx_tests/roi.onnx"
+
+        torch.onnx.export(roi, inputs, onnx_io,
+                            verbose=False,
+                            do_constant_folding=False,
+                            opset_version=ONNX_OPSET_VERSION)
+        
+        self.ort_validate(onnx_io, inputs, outputs)
+            
 if __name__ == '__main__':
     unittest.main()
