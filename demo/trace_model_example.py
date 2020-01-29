@@ -11,12 +11,12 @@ from demo.transform import transform_image
 import os
 
 OVERWRITE_MODEL = True
-TEST_IMAGE_PATH = "./sample.jpg"
+TEST_IMAGE_PATH = "./demo/sample.jpg"
 # MODEL_DEVICE = "cuda"
 MODEL_DEVICE = "cpu"
 MODEL_PATH = f"./script_model_{MODEL_DEVICE}.pt"
 
-config_file = "../configs/caffe2/e2e_mask_rcnn_R_50_FPN_1x_caffe2.yaml"
+config_file = "./configs/caffe2/e2e_mask_rcnn_R_50_FPN_1x_caffe2.yaml"
 cfg.merge_from_file(config_file)
 cfg.merge_from_list(["MODEL.DEVICE", MODEL_DEVICE])
 cfg.freeze()
@@ -34,7 +34,7 @@ class MaskRCNNModel(torch.nn.Module):
             param.requires_grad = False
 
     def forward(self, image):
-        image_list = ImageList(image.unsqueeze(0), [(int(image.size(-2)), int(image.size(-1)))])
+        image_list = ImageList(image.unsqueeze(0), [(image.size(-2), image.size(-1))])
 
         result, = coco_demo.model(image_list)
 
@@ -55,9 +55,10 @@ if OVERWRITE_MODEL or not os.path.exists(MODEL_PATH):
     model.eval()
     traced_model = torch.jit.trace(model, (image,))
     traced_model.save(MODEL_PATH)
+    print(traced_model.graph)
 
-# %%
 loaded_model = torch.jit.load(MODEL_PATH)
+# print(traced_model.graph)
 boxes, labels, mask, scores = loaded_model(image)
 
 from maskrcnn_benchmark.structures.bounding_box import BoxList
@@ -68,6 +69,4 @@ prediction.add_field("scores", scores)
 prediction = prediction.resize((width, height))
 
 result = masking_image(coco_demo, original_image, prediction)
-imshow(result)
-
-# %%
+print(result)
