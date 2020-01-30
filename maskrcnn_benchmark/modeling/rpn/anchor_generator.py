@@ -78,21 +78,22 @@ class AnchorGenerator(nn.Module):
             grid_height, grid_width = size
             device = base_anchors.device
 
-            # meshgrid is not registered as onnx operator on torch==1.3.1
-            # shifts_x = torch.arange(
-            #     0, grid_width * stride, step=stride, dtype=torch.float32, device=device
-            # )
-            # shifts_y = torch.arange(
-            #     0, grid_height * stride, step=stride, dtype=torch.float32, device=device
-            # )
-            # shift_y, shift_x = torch.meshgrid(shifts_y, shifts_x)
+            if torch.onnx.is_in_onnx_export():
+                shifts_x = torch.ones(grid_width*stride).nonzero().view(grid_width, stride).to(torch.float32).index_select(1, torch.zeros(1, dtype=torch.long)).to(device)
+                shifts_y = torch.ones(grid_height*stride).nonzero().view(grid_height, stride).to(torch.float32).index_select(1, torch.zeros(1, dtype=torch.long)).to(device)
 
-            shifts_x = torch.ones(grid_width*stride).nonzero().view(grid_width, stride).to(torch.float32).index_select(1, torch.zeros(1, dtype=torch.long)).to(device)
-            shifts_y = torch.ones(grid_height*stride).nonzero().view(grid_height, stride).to(torch.float32).index_select(1, torch.zeros(1, dtype=torch.long)).to(device)
+                shift_y = shifts_y.view(-1, 1).expand(grid_height, grid_width)
+                shift_x = shifts_x.view(1, -1).expand(grid_height, grid_width)
+            else:
+                # meshgrid is not registered as onnx operator on torch==1.3.1
+                shifts_x = torch.arange(
+                    0, grid_width * stride, step=stride, dtype=torch.float32, device=device
+                )
+                shifts_y = torch.arange(
+                    0, grid_height * stride, step=stride, dtype=torch.float32, device=device
+                )
+                shift_y, shift_x = torch.meshgrid(shifts_y, shifts_x)
 
-            shift_y = shifts_y.view(-1, 1).expand(grid_height, grid_width)
-            shift_x = shifts_x.view(1, -1).expand(grid_height, grid_width)
-            
             shift_x = shift_x.reshape(-1)
             shift_y = shift_y.reshape(-1)
             shifts = torch.stack((shift_x, shift_y, shift_x, shift_y), dim=1)
