@@ -11,17 +11,13 @@ class RPNPostProcessorTester(ONNXExportTester):
         from maskrcnn_benchmark.modeling.rpn.inference import make_rpn_postprocessor
         from maskrcnn_benchmark.modeling.rpn.anchor_generator import make_anchor_generator
         from maskrcnn_benchmark.modeling.box_coder import BoxCoder
-
-        anchor_generator = make_anchor_generator(cfg)
-        objectness, rpn_box_regression = coco_demo.model.rpn.head(sample_features)
-        anchors = anchor_generator(sample_image_list, sample_features)
         
         class RPNPostProcessor(torch.nn.Module):
             def __init__(self):
                 super(RPNPostProcessor, self).__init__()
                 rpn_box_coder = BoxCoder(weights=(1.0, 1.0, 1.0, 1.0))
 
-                # self.anchor_generator = make_anchor_generator(cfg)
+                self.anchor_generator = make_anchor_generator(cfg)
                 self.box_selector = make_rpn_postprocessor(cfg, rpn_box_coder, is_train=False)
 
             def forward(self, image, features):
@@ -32,10 +28,10 @@ class RPNPostProcessorTester(ONNXExportTester):
                         used for computing the predictions. Each tensor in the list
                         correspond to different feature levels
                 """
-                # image_list = ImageList(image.unsqueeze(0), [(image.size(-2), image.size(-1))])
+                image_list = ImageList(image.unsqueeze(0), [(image.size(-2), image.size(-1))])
 
-                # objectness, rpn_box_regression = coco_demo.model.rpn.head(features)
-                # anchors = self.anchor_generator(image_list, features)
+                objectness, rpn_box_regression = coco_demo.model.rpn.head(features)
+                anchors = self.anchor_generator(image_list, features)
                 boxes = self.box_selector(anchors, objectness, rpn_box_regression)[0]
 
                 return (boxes.bbox, boxes.get_field("objectness"))
