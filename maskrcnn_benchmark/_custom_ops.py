@@ -12,7 +12,6 @@ def _register_custom_op():
 
     from torch.onnx.symbolic_helper import parse_args
     from torch.onnx.symbolic_opset9 import select, unsqueeze, squeeze, _cast_Long, reshape
-    from torchvision.ops.roi_align import _RoIAlignFunction
 
     ONNX_OPSET_VERSION = 10
     
