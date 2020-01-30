@@ -71,7 +71,7 @@ class ONNXExportTester(unittest.TestCase):
         ort_outs = ort_session.run(None, ort_inputs)
 
         for i in range(0, len(outputs)):
-            torch.testing.assert_allclose(outputs[i], ort_outs[i], rtol=1e-02, atol=1e-04)
+            torch.testing.assert_allclose(outputs[i].astype(np.float32), ort_outs[i].astype(np.float32), rtol=1e-02, atol=1e-04)
 
     def test_anchor_generator(self):
         from maskrcnn_benchmark.modeling.rpn.anchor_generator import make_anchor_generator
