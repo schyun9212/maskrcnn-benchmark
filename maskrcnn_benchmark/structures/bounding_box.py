@@ -18,7 +18,8 @@ class BoxList(object):
 
     def __init__(self, bbox, image_size, mode="xyxy"):
         device = bbox.device if isinstance(bbox, torch.Tensor) else torch.device("cpu")
-        bbox = torch.as_tensor(bbox, dtype=torch.float32, device=device)
+        if not isinstance(bbox, torch.Tensor) or bbox.dtype != torch.float32 or bbox.device != device:
+            bbox = torch.as_tensor(bbox, dtype=torch.float32, device=device)
         if bbox.ndimension() != 2:
             raise ValueError(
                 "bbox should have 2 dimensions, got {}".format(bbox.ndimension())
@@ -213,10 +214,16 @@ class BoxList(object):
 
     def clip_to_image(self, remove_empty=True):
         TO_REMOVE = 1
-        self.bbox[:, 0].clamp_(min=0, max=self.size[0] - TO_REMOVE)
-        self.bbox[:, 1].clamp_(min=0, max=self.size[1] - TO_REMOVE)
-        self.bbox[:, 2].clamp_(min=0, max=self.size[0] - TO_REMOVE)
-        self.bbox[:, 3].clamp_(min=0, max=self.size[1] - TO_REMOVE)
+
+        if torch.onnx.is_in_onnx_export():
+            xs = self.bbox[:, 0::2].clamp(min=0, max=self.size[0] - TO_REMOVE)
+            ys = self.bbox[:, 1::2].clamp(min=0, max=self.size[1] - TO_REMOVE)
+            self.bbox = torch.stack([xs, ys], dim=2).view(-1, 4)
+        else:
+            self.bbox[:, 0].clamp_(min=0, max=self.size[0] - TO_REMOVE)
+            self.bbox[:, 1].clamp_(min=0, max=self.size[1] - TO_REMOVE)
+            self.bbox[:, 2].clamp_(min=0, max=self.size[0] - TO_REMOVE)
+            self.bbox[:, 3].clamp_(min=0, max=self.size[1] - TO_REMOVE)
         if remove_empty:
             box = self.bbox
             keep = (box[:, 3] > box[:, 1]) & (box[:, 2] > box[:, 0])

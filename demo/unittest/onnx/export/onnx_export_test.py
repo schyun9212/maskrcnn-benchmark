@@ -96,7 +96,11 @@ class ONNXExportTester(unittest.TestCase):
         if VALIDATION_TYPE == "IO":
             onnx_io = io.BytesIO()
         else:
+<<<<<<< HEAD:demo/unittest/onnx_export_test.py
             onnx_io = "./demo/onnx_tests/backbone.onnx"
+=======
+            onnx_io = "./demo/onnx_test_models/backbone.onnx"
+>>>>>>> rpn-bugfix:demo/unittest/onnx/export/onnx_export_test.py
 
         self.export_model(Backbone(), sample_image, onnx_io=onnx_io)
 
@@ -123,11 +127,16 @@ class ONNXExportTester(unittest.TestCase):
         if VALIDATION_TYPE == "IO":
             onnx_io = io.BytesIO()
         else:
+<<<<<<< HEAD:demo/unittest/onnx_export_test.py
             onnx_io = "./demo/onnx_tests/rpn.onnx"
+=======
+            onnx_io = "./demo/onnx_test_models/rpn.onnx"
+>>>>>>> rpn-bugfix:demo/unittest/onnx/export/onnx_export_test.py
 
         torch.onnx.export(rpn, inputs, onnx_io,
                             verbose=False,
                             do_constant_folding=False,
+                            input_names=["image", "feature_0", "feature_1", "feature_2", "feature_3", "feature_4"],
                             opset_version=ONNX_OPSET_VERSION)
         
         self.ort_validate(onnx_io, inputs, outputs)
@@ -173,7 +182,11 @@ class ONNXExportTester(unittest.TestCase):
         if VALIDATION_TYPE == "IO":
             onnx_io = io.BytesIO()
         else:
+<<<<<<< HEAD:demo/unittest/onnx_export_test.py
             onnx_io = "./demo/onnx_tests/roi.onnx"
+=======
+            onnx_io = "./demo/onnx_test_models/roi.onnx"
+>>>>>>> rpn-bugfix:demo/unittest/onnx/export/onnx_export_test.py
 
         torch.onnx.export(roi, inputs, onnx_io,
                             verbose=False,
