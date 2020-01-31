@@ -7,7 +7,7 @@ from maskrcnn_benchmark.structures.image_list import ImageList
 from demo.unittest.onnx.export import ONNXExportTester, ONNX_OPSET_VERSION, VALIDATION_TYPE, cfg, coco_demo, sample_image, sample_image_list, sample_features
 
 class RPNPostProcessorTester(ONNXExportTester):
-    def test_anchor_generator(self):
+    def test_rpn_post_processor(self):
         from maskrcnn_benchmark.modeling.rpn.inference import make_rpn_postprocessor
         from maskrcnn_benchmark.modeling.rpn.anchor_generator import make_anchor_generator
         from maskrcnn_benchmark.modeling.box_coder import BoxCoder

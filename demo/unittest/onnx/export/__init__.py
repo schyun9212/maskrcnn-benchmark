@@ -42,6 +42,8 @@ sample_image, t_width, t_height = transform_image(cfg, original_image)
 
 sample_image_list = ImageList(sample_image.unsqueeze(0), [(sample_image.size(-2), sample_image.size(-1))])
 sample_features = coco_demo.model.backbone(sample_image_list.tensors)
+sample_proposals = coco_demo.model.rpn(sample_image_list, sample_features)[0][0]
+sample_proposals = (sample_proposals.bbox, sample_proposals.get_field("objectness"))
 
 class ONNXExportTester(unittest.TestCase):
     def run_model(self, model, inputs):
