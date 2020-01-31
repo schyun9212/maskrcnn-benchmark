@@ -113,10 +113,22 @@ class Pooler(nn.Module):
             dtype=dtype,
             device=device,
         )
-        for level, (per_level_feature, pooler) in enumerate(zip(x, self.poolers)):
-            idx_in_level = torch.nonzero(levels.type(torch.int32) == level).squeeze(1)
-            rois_per_level = rois[idx_in_level]
-            result[idx_in_level] = pooler(per_level_feature, rois_per_level).to(dtype)
+
+        if torch.onnx.is_in_onnx_export():
+            for level, (per_level_feature, pooler) in enumerate(zip(x, self.poolers)):
+                idx_in_level = torch.nonzero(levels.type(torch.int32) == level).squeeze(1)
+                rois_per_level = rois[idx_in_level]
+                temp = pooler(per_level_feature, rois_per_level).to(dtype)
+                
+                index = idx_in_level.view(-1, 1, 1, 1)\
+                                    .expand(idx_in_level.size(0), temp.size(1), temp.size(2), temp.size(3))\
+                                    .to(torch.long)
+                result.scatter_(0, index, temp)
+        else:
+            for level, (per_level_feature, pooler) in enumerate(zip(x, self.poolers)):
+                idx_in_level = torch.nonzero(levels.type(torch.int32) == level).squeeze(1)
+                rois_per_level = rois[idx_in_level]
+                result[idx_in_level] = pooler(per_level_feature, rois_per_level).to(dtype)
 
         return result
 
